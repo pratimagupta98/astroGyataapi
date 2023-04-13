@@ -19,20 +19,23 @@ cloudinary.config({
 exports.usersignup = async (req, res) => {
   let length = 6;
   let defaultotp = "123456";
-  const { fullname, userimg, email, mobile, dob,gender,birth_tym,city,bithplace } =
+  const { fullname, userimg, email, mobile, dob, gender, birth_tym, city, bithplace, password, cnfmPassword } =
     req.body;
+
+  const salt = await bcrypt.genSalt(10);
+  const hashPassword = await bcrypt.hash(password, salt);
   const newUser = new User({
     fullname: fullname,
-    // password: hashPassword,
-    // cnfmPassword: hashPassword,
+    password: hashPassword,
+    cnfmPassword: hashPassword,
     email: email,
     mobile: mobile,
     userimg: userimg,
     dob: dob,
-    birth_tym:birth_tym,
-    bithplace:bithplace,
-    city:city,
-    gender:gender,
+    birth_tym: birth_tym,
+    bithplace: bithplace,
+    city: city,
+    gender: gender,
     // tym_of_birth:tym_of_birth
     //walletId:walletId,
     otp: defaultotp
@@ -140,50 +143,52 @@ exports.getoneuserdetail = async (req, res) => {
 
 
 
-// exports.userlogin = async(req,res)=>{
-//   const{email,mobile,password} =req.body
+exports.loginWithPassword = async (req, res) => {
+  const { email, mobile, password } = req.body
 
-//   const user = await User.findOne({
-//     $or: [{ email: email }, { mobile: mobile }],
-//   });
-//   console.log("Strrr",user)
-//   if(user){
-//     const validPass = await  bcrypt.compare(password,user.password)
-//     console.log("paaa",validPass)
-//     if(validPass){
-//       const token = jwt.sign(
-//         {
-//           userId: user._id,
-//       }, 
-//       key,
-//       {
-//         expiresIn: 86400000,
-//       }
-//       )
-//       res.header("auth-token", token).status(200).send({
-//         status: true,
-//         token: token,
-//         msg: "success",
-//         user: user,
-//       });
-//     } else {
-//       res.status(400).json({
-//         status: false,
-//         msg: "Incorrect Password",
-//         error: "error",
-//       });
-//     }
-//   } else {
-//     res.status(400).json({
-//       status: false,
-//       msg: "User Doesnot Exist",
-//       error: "error",
-//     });
-//   }
-// };
+  const user = await User.findOne({
+    mobile: mobile
+  });
+  console.log("Strrr", user)
+  if (user) {
+    const validPass = await bcrypt.compare(req.body.password, user.password)
+    console.log("paaa", validPass)
+    if (validPass) {
+      const token = jwt.sign(
+        {
+          userId: user._id,
+        },
+        key,
+        {
+          expiresIn: 86400000,
+        }
+      )
+      res.header("auth-token", token).status(200).send({
+        status: true,
+        token: token,
+        msg: "success",
+        user: user,
+      });
+    } else {
+      res.status(400).json({
+        status: false,
+        msg: "Incorrect Password",
+        error: "error",
+      });
+    }
+  } else {
+    res.status(400).json({
+      status: false,
+      msg: "User Doesnot Exist",
+      error: "error",
+    });
+  }
+};
+
+
 
 exports.edit_myprofile = async (req, res) => {
-  const { fullname, userimg, email, mobile, password, cnfmPassword, birth_tym, dob, bithplace, address, city, state, country, pincode,gender } = req.body
+  const { fullname, userimg, email, mobile, password, cnfmPassword, birth_tym, dob, bithplace, address, city, state, country, pincode, gender } = req.body
 
   data = {}
   if (fullname) {
@@ -320,18 +325,22 @@ exports.shipping_address = async (req, res) => {
 };
 
 
-exports.resetPassword = async (req, res) => {
-  const { oldpassword ,password, cnfmPassword } = req.body
-  const userData = await User.findOne({_id : req.params.id})
-  if(userData){
-  const passwordMatch = await bcrypt.compare(oldpassword,userData.password)
-  if(passwordMatch){
 
-    console.log("matched")
-    if(password === cnfmPassword){
-      const salt = await bcrypt.genSalt(10);
-    const hashPassword = await bcrypt.hash(password, salt);
-    const findandUpdateEntry = await User.findOneAndUpdate(
+
+
+
+exports.resetPassword = async (req, res) => {
+  const { oldpassword, password, cnfrmPassword } = req.body
+  const userData = await User.findOne({ _id: req.params.id })
+  if (userData) {
+    const passwordMatch = await bcrypt.compare(oldpassword, userData.password)
+    if (passwordMatch) {
+
+      console.log("matched")
+      if (password === cnfrmPassword) {
+        const salt = await bcrypt.genSalt(10);
+        const hashPassword = await bcrypt.hash(password, salt);
+        const findandUpdateEntry = await User.findOneAndUpdate(
           {
             _id: req.params.id
           },
@@ -344,21 +353,128 @@ exports.resetPassword = async (req, res) => {
             msg: "success",
             data: findandUpdateEntry,
           });
-        } 
-    }else {
-      res.status(401).json({
+
+        }
+      } else {
+        res.status(401).json({
+          status: false,
+          msg: "Password confirm password not matched"
+
+        });
+      }
+    } else {
+      res.status(400).json({
         status: false,
-        msg: "Password confirm password not matched"
-        
+        msg: "Old Password not matched",
+
+      })
+    }
+
+  }
+};
+
+
+exports.forget_sendotp = async (req, res) => {
+  let length = 6;
+  let defaultotp = "123456";
+  const getuser = await User.findOne({ mobile: req.body.mobile });
+  if (getuser) {
+    console.log("STRING", getuser)
+    res.status(200).send({
+      status: true,
+      msg: "otp Send Successfully",
+      //otp: otp,
+      _id: getuser._id,
+      mobile: getuser.mobile
+    })
+  } else {
+    res.status(400).json({
+      status: false,
+      msg: "User doesn't Exist"
+    })
+  }
+};
+
+
+
+exports.forget_verify = async (req, res) => {
+  const { mobile, otp } = req.body;
+  const getuser = await User.findOne({ mobile: mobile })
+  if (getuser) {
+    if (otp == "123456") {
+      const token = jwt.sign(
+        {
+          userId: getuser._id,
+        },
+        key,
+        {
+          expiresIn: "365d",
+        }
+      )
+      //.then((data)=>{ 
+      res.header("auth-token", token).status(200).send({
+        status: true,
+        msg: "otp verified",
+        otp: otp,
+        _id: getuser._id,
+        mobile: getuser.mobile,
+        token: token
+      })
+      // });
+    } else {
+      res.status(200).json({
+        status: false,
+        msg: "Incorrect Otp",
       });
     }
-  }else{
+  } else {
+    res.status(200).json({
+      status: false,
+      msg: "User Doesn't exist",
+    });
+
+  }
+}
+
+exports.fogetpassword = async (req, res) => {
+
+  const { password, cnfmPassword } = req.body
+
+  //  const salt = await bcrypt.genSalt(10);
+  //  const hashPassword = await bcrypt.hash(password, salt);
+  //  const hashPassword1 = await bcrypt.hash(cnfrmPassword, salt)
+
+  // const validPass = String.compare(req.body.password, req.body.cnfrmPassword);
+  // console.log("Result",validPass)
+  if (password === cnfmPassword) {
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+
+    const findandUpdateEntry = await User.findOneAndUpdate(
+      {
+        _id: req.params.id
+      },
+      { $set: { password: hashPassword, cnfmPassword: hashPassword } },
+      { new: true }
+    );
+    if (findandUpdateEntry) {
+      res.status(200).json({
+        status: true,
+        msg: "success",
+        data: findandUpdateEntry,
+      });
+    } else {
+      res.status(400).json({
+        status: false,
+        msg: "error",
+        error: "error",
+      });
+    }
+  } else {
     res.status(400).json({
-          status: false,
-          msg: "Old Password not matched",
-         
-        })
-      }
-  
+      status: false,
+      msg: "error",
+      error: "Password not matched",
+    })
   }
 };
