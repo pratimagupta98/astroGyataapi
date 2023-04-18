@@ -26,7 +26,10 @@ const {
   todayPanchang,
   lalkitab_houses,
   lalkitab_planets,
-  lalkitab_remedies
+  lalkitab_remedies,
+  major_chardasha,
+  major_yogini_dasha,
+  varshaphal_details
 
 } = require("../controller/match_making");
 
@@ -56,6 +59,13 @@ router.post("/user/todayPanchang", todayPanchang);
 router.post("/user/lalkitab_houses", lalkitab_houses);
 router.post("/user/lalkitab_planets", lalkitab_planets);
 router.post("/user/lalkitab_remedies/:planet_name", lalkitab_remedies);
+router.post("/user/major_chardasha", major_chardasha);
+router.post("/user/major_yogini_dasha", major_yogini_dasha);
+router.post("/user/varshaphal_details", varshaphal_details);
+
+
+
+
 
 
 
