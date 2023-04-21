@@ -1,6 +1,6 @@
 const AstroTermsCondition = require("../models/astroTrmsCondition");
 const resp = require("../helpers/apiResponse");
-//console
+
 exports.astro_term_cond = async (req, res) => {
     const { desc } = req.body;
 
